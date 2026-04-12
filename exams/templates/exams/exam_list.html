@@ -1,0 +1,28 @@
+{% extends "exams/base.html" %}
+
+{% block title %}All Exams{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 1.5rem">Available Exams</h2>
+
+{% if exams %}
+    {% for exam in exams %}
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+                <h3>{{ exam.title }}</h3>
+                <p style="color:#666; margin-top:4px; font-size:14px">
+                    Duration: {{ exam.duration_mins }} mins &nbsp;|&nbsp;
+                    Starts: {{ exam.starts_at|date:"d M Y, h:i A" }}
+                </p>
+            </div>
+            <span class="badge">{{ exam.questions.count }} questions</span>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <p style="color:#666">No exams available yet.</p>
+    </div>
+{% endif %}
+{% endblock %}
