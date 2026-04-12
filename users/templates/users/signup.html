@@ -1,0 +1,51 @@
+{% extends "exams/base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 4rem auto;">
+    <div class="card">
+        <h2 style="margin-bottom: 1.5rem">Create Account</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 1rem">
+                <label style="display:block; font-size:14px; margin-bottom:4px">Username</label>
+                <input type="text" name="username"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px">
+            </div>
+            <div style="margin-bottom: 1rem">
+                <label style="display:block; font-size:14px; margin-bottom:4px">Email</label>
+                <input type="email" name="email"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px">
+            </div>
+            <div style="margin-bottom: 1rem">
+                <label style="display:block; font-size:14px; margin-bottom:4px">Password</label>
+                <input type="password" name="password1"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px">
+            </div>
+            <div style="margin-bottom: 1rem">
+                <label style="display:block; font-size:14px; margin-bottom:4px">Confirm Password</label>
+                <input type="password" name="password2"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px">
+            </div>
+            <div style="margin-bottom: 1.5rem">
+                <label style="display:block; font-size:14px; margin-bottom:4px">Role</label>
+                <select name="role"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px">
+                    <option value="student">Student</option>
+                    <option value="examiner">Examiner</option>
+                </select>
+            </div>
+            <button type="submit"
+                style="width:100%; padding:10px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer">
+                Create Account
+            </button>
+        </form>
+
+        <p style="margin-top:1rem; font-size:13px; color:#666; text-align:center">
+            Already have an account? <a href="{% url 'login' %}">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
