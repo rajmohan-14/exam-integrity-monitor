@@ -1,0 +1,58 @@
+{% extends "exams/base.html" %}
+
+{% block title %}{{ exam.title }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+    <h2>{{ exam.title }}</h2>
+    <a href="/exams/" style="font-size:14px; color:#666">← Back to exams</a>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; text-align:center">
+        <div>
+            <p style="font-size:12px; color:#888; margin-bottom:4px">Duration</p>
+            <p style="font-size:20px; font-weight:500">{{ exam.duration_mins }} min</p>
+        </div>
+        <div>
+            <p style="font-size:12px; color:#888; margin-bottom:4px">Questions</p>
+            <p style="font-size:20px; font-weight:500">{{ questions.count }}</p>
+        </div>
+        <div>
+            <p style="font-size:12px; color:#888; margin-bottom:4px">Starts</p>
+            <p style="font-size:14px; font-weight:500">{{ exam.starts_at|date:"d M, h:i A" }}</p>
+        </div>
+    </div>
+</div>
+
+{% if request.user.is_examiner %}
+<div class="card" style="margin-bottom:1rem">
+    <h3 style="margin-bottom:1rem">Questions</h3>
+    {% for question in questions %}
+    <div style="padding:0.75rem 0; border-bottom:1px solid #f0f0f0">
+        <p style="font-size:14px"><strong>Q{{ forloop.counter }}.</strong> {{ question.body }}</p>
+        <p style="font-size:12px; color:#888; margin-top:4px">
+            {{ question.get_question_type_display }} · {{ question.marks }} mark(s)
+        </p>
+    </div>
+    {% empty %}
+    <p style="color:#888; font-size:14px">No questions added yet.</p>
+    {% endfor %}
+    <a href="{% url 'add-question' exam_id=exam.id %}" class="btn" style="display:inline-block; margin-top:1rem">
+        + Add Question
+    </a>
+</div>
+{% endif %}
+
+{% if request.user.is_student %}
+<div class="card">
+    <p style="font-size:14px; color:#666; margin-bottom:1rem">
+        This exam has {{ questions.count }} question(s) and lasts {{ exam.duration_mins }} minutes.
+        Once you start, the timer begins immediately.
+    </p>
+    <button style="padding:10px 24px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer">
+        Start Exam (coming in Phase 6)
+    </button>
+</div>
+{% endif %}
+{% endblock %}

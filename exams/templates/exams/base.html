@@ -20,6 +20,9 @@
         <a href="/exams/">Exam Monitor</a>
         <div style="display:flex; gap:1rem; align-items:center">
             {% if request.user.is_authenticated %}
+                {% if request.user.is_examiner %}
+                    <a href="/exams/create/" style="font-size:14px">+ Create Exam</a>
+                {% endif %}
                 <span style="font-size:14px">{{ request.user.username }} · {{ request.user.role }}</span>
                 <a href="/users/logout/" style="font-size:14px">Logout</a>
             {% else %}

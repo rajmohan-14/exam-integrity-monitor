@@ -26,7 +26,7 @@ def signup_view(request):
         return redirect('exam-list')
 
     if request.method == 'POST':
-        print("POST data:", request.POST)  # ← add this line
+        print("POST data:", request.POST)
         username = request.POST.get('username', '')
         email = request.POST.get('email', '')
         password1 = request.POST.get('password1', '')

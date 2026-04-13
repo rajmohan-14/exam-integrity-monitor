@@ -1,8 +1,16 @@
 from django.db import models
+from django.conf import settings
 import uuid
+
 
 class Exam(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='exams',
+        null=True
+    )
     title = models.CharField(max_length=200)
     duration_mins = models.IntegerField()
     starts_at = models.DateTimeField()
@@ -24,7 +32,7 @@ class Question(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='questions')
     body = models.TextField()
     question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
-    options = models.JSONField(blank=True, null=True)  # for MCQ only
+    options = models.JSONField(blank=True, null=True)
     correct_answer = models.CharField(max_length=500, blank=True)
     marks = models.IntegerField(default=1)
 

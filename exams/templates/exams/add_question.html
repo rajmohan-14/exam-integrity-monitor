@@ -1,0 +1,47 @@
+{% extends "exams/base.html" %}
+
+{% block title %}Add Question{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+        <h2>Add Question</h2>
+        <span class="badge">{{ exam.title }}</span>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+        <p style="font-size:13px; color:#666">
+            Questions added: <strong>{{ exam.questions.count }}</strong>
+        </p>
+    </div>
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+
+            {% for field in form %}
+            <div style="margin-bottom: 1.25rem">
+                <label style="display:block; font-size:14px; font-weight:500; margin-bottom:4px">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                <p style="color:#c0392b; font-size:12px; margin-top:4px">{{ field.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <div style="display:flex; gap:1rem">
+                <button type="submit" name="add_another"
+                    style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer">
+                    Save & Add Another
+                </button>
+                <button type="submit"
+                    style="flex:1; padding:10px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer">
+                    Save & Finish →
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
