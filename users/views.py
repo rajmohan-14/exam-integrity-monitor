@@ -26,11 +26,16 @@ def signup_view(request):
         return redirect('exam-list')
 
     if request.method == 'POST':
-        username = request.POST['username']
-        email = request.POST['email']
-        password1 = request.POST['password1']
-        password2 = request.POST['password2']
-        role = request.POST['role']
+        print("POST data:", request.POST)  # ← add this line
+        username = request.POST.get('username', '')
+        email = request.POST.get('email', '')
+        password1 = request.POST.get('password1', '')
+        password2 = request.POST.get('password2', '')
+        role = request.POST.get('role', 'student')
+
+        if not username:
+            messages.error(request, 'Username is required')
+            return render(request, 'users/signup.html', {})
 
         if password1 != password2:
             messages.error(request, 'Passwords do not match')
