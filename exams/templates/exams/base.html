@@ -9,21 +9,29 @@
         body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
         nav { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
         nav a { color: white; text-decoration: none; font-weight: 500; }
+        nav a:hover { opacity: 0.8; }
         .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
         .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #e5e5e5; }
         .btn { display: inline-block; padding: 8px 16px; background: #1a1a1a; color: white; border-radius: 6px; text-decoration: none; font-size: 14px; }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; background: #e5e5e5; }
+        .messages { list-style: none; margin-bottom: 1rem; }
+        .messages li { padding: 10px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 6px; }
+        .messages .error { background: #fee2e2; color: #991b1b; }
+        .messages .success { background: #dcfce7; color: #166534; }
     </style>
 </head>
 <body>
     <nav>
         <a href="/exams/">Exam Monitor</a>
-        <div style="display:flex; gap:1rem; align-items:center">
+        <div style="display:flex; gap:1.25rem; align-items:center">
             {% if request.user.is_authenticated %}
                 {% if request.user.is_examiner %}
+                    <a href="/monitor/dashboard/" style="font-size:14px">Dashboard</a>
                     <a href="/exams/create/" style="font-size:14px">+ Create Exam</a>
                 {% endif %}
-                <span style="font-size:14px">{{ request.user.username }} · {{ request.user.role }}</span>
+                <span style="font-size:14px; opacity:0.7">
+                    {{ request.user.username }} · {{ request.user.role }}
+                </span>
                 <a href="/users/logout/" style="font-size:14px">Logout</a>
             {% else %}
                 <a href="/users/login/" style="font-size:14px">Login</a>
@@ -31,7 +39,16 @@
             {% endif %}
         </div>
     </nav>
+
     <div class="container">
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
         {% block content %}
         {% endblock %}
     </div>

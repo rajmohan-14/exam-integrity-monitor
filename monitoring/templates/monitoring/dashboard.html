@@ -1,0 +1,61 @@
+{% extends "exams/base.html" %}
+{% block title %}Live Dashboard{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom:1.5rem">Live Exam Dashboard</h2>
+
+{% if sessions %}
+{% for session in sessions %}
+<div class="card" style="margin-bottom:1rem" id="session-{{ session.id }}">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
+        <div>
+            <p style="font-weight:500">{{ session.student.username }}</p>
+            <p style="font-size:13px; color:#666">{{ session.exam.title }}</p>
+        </div>
+        <span class="badge" style="background:{% if session.status == 'flagged' %}#fee2e2; color:#991b1b{% elif session.status == 'submitted' %}#dcfce7; color:#166534{% else %}#e0f2fe; color:#0c4a6e{% endif %}">
+            {{ session.status }}
+        </span>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:1rem">
+        <span style="font-size:13px; color:#666; white-space:nowrap">Trust score:</span>
+        <div style="flex:1; background:#f0f0f0; border-radius:4px; height:8px">
+            <div id="bar-{{ session.id }}"
+                style="height:8px; border-radius:4px; background:#22c55e; width:{{ session.trust_score|floatformat:0 }}%; transition:width 0.5s">
+            </div>
+        </div>
+        <span id="score-{{ session.id }}" style="font-size:13px; font-weight:500; min-width:32px">
+            {{ session.trust_score }}
+        </span>
+    </div>
+
+    <p style="font-size:12px; color:#888; margin-top:0.5rem">
+        Events: {{ session.events.count }} suspicious &nbsp;|&nbsp;
+        Started: {{ session.started_at|date:"h:i A" }}
+    </p>
+</div>
+
+<script>
+(function() {
+    const sessionId = "{{ session.id }}";
+    const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard/${sessionId}/`);
+
+    ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const score = data.trust_score;
+
+        document.getElementById(`score-${sessionId}`).textContent = score.toFixed(2);
+        const bar = document.getElementById(`bar-${sessionId}`);
+        bar.style.width = (score * 100) + '%';
+        bar.style.background = score > 0.7 ? '#22c55e' : score > 0.4 ? '#f59e0b' : '#ef4444';
+    };
+})();
+</script>
+{% endfor %}
+
+{% else %}
+<div class="card">
+    <p style="color:#666">No exam sessions yet.</p>
+</div>
+{% endif %}
+{% endblock %}

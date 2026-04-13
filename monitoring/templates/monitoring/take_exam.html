@@ -1,0 +1,127 @@
+{% extends "exams/base.html" %}
+{% block title %}{{ exam.title }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+    <h2>{{ exam.title }}</h2>
+    <div style="font-size:24px; font-weight:500; color:#1a1a1a" id="timer">--:--</div>
+</div>
+
+<div class="card" style="margin-bottom:1rem; padding:0.75rem 1rem;">
+    <div style="display:flex; align-items:center; gap:1rem">
+        <span style="font-size:13px; color:#666">Trust score:</span>
+        <div style="flex:1; background:#f0f0f0; border-radius:4px; height:8px">
+            <div id="trust-bar" style="height:8px; border-radius:4px; background:#22c55e; width:100%; transition:width 0.5s"></div>
+        </div>
+        <span id="trust-value" style="font-size:13px; font-weight:500">1.0</span>
+    </div>
+</div>
+
+<div id="warning-box" style="display:none; background:#fff3cd; border:1px solid #ffc107; padding:0.75rem 1rem; border-radius:6px; margin-bottom:1rem; font-size:13px; color:#856404">
+    Suspicious activity detected. Your examiner has been notified.
+</div>
+
+<form method="post" id="exam-form">
+    {% csrf_token %}
+    {% for question in questions %}
+    <div class="card" style="margin-bottom:1rem">
+        <p style="font-weight:500; margin-bottom:1rem">
+            Q{{ forloop.counter }}. {{ question.body }}
+            <span style="float:right; font-size:12px; color:#888">[{{ question.marks }} mark]</span>
+        </p>
+
+        {% if question.question_type == 'mcq' and question.options %}
+            {% for key, value in question.options.items %}
+            <label style="display:block; padding:8px 12px; margin-bottom:6px; border:1px solid #e5e5e5; border-radius:6px; cursor:pointer; font-size:14px">
+                <input type="radio" name="question_{{ question.id }}" value="{{ key }}" style="margin-right:8px">
+                {{ key }}. {{ value }}
+            </label>
+            {% endfor %}
+        {% else %}
+            <textarea name="question_{{ question.id }}" rows="3"
+                style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; resize:vertical"
+                placeholder="Write your answer here..."></textarea>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <button type="submit"
+        style="width:100%; padding:12px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer; margin-bottom:2rem">
+        Submit Exam
+    </button>
+</form>
+
+<script>
+const SESSION_ID = "{{ session.id }}";
+const DURATION_MINS = {{ exam.duration_mins }};
+const WS_URL = `ws://${window.location.host}/ws/exam/${SESSION_ID}/`;
+
+// --- WebSocket setup ---
+let socket = new WebSocket(WS_URL);
+
+socket.onopen = () => console.log('Monitoring connected');
+socket.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    updateTrustUI(data.trust_score);
+};
+
+function sendEvent(type, metadata = {}) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type, metadata }));
+    }
+}
+
+// --- Trust score UI ---
+function updateTrustUI(score) {
+    const bar = document.getElementById('trust-bar');
+    const val = document.getElementById('trust-value');
+    const warn = document.getElementById('warning-box');
+
+    val.textContent = score.toFixed(2);
+    bar.style.width = (score * 100) + '%';
+
+    if (score > 0.7) {
+        bar.style.background = '#22c55e';
+    } else if (score > 0.4) {
+        bar.style.background = '#f59e0b';
+        warn.style.display = 'block';
+    } else {
+        bar.style.background = '#ef4444';
+        warn.style.display = 'block';
+    }
+}
+
+// --- Surveillance events ---
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) sendEvent('tab_switch');
+});
+
+window.addEventListener('blur', () => sendEvent('focus_loss'));
+
+document.addEventListener('copy', () => sendEvent('copy'));
+document.addEventListener('paste', () => sendEvent('paste'));
+
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    sendEvent('right_click');
+});
+
+// --- Countdown timer ---
+const endTime = Date.now() + (DURATION_MINS * 60 * 1000);
+
+function updateTimer() {
+    const remaining = Math.max(0, endTime - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timer').textContent =
+        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+    if (remaining === 0) {
+        document.getElementById('exam-form').submit();
+    }
+}
+
+setInterval(updateTimer, 1000);
+updateTimer();
+</script>
+{% endblock %}
