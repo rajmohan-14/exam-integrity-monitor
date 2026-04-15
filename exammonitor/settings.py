@@ -137,3 +137,14 @@ CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
 CELERY_TIMEZONE = 'Asia/Kolkata'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'exammonitor@localhost'
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'auto-submit-expired-exams': {
+        'task': 'monitoring.tasks.auto_submit_expired_exams',
+        'schedule': 60.0,  # runs every 60 seconds
+    },
+}
