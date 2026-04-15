@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'users',
     'channels',
     'monitoring',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -131,3 +132,8 @@ CHANNEL_LAYERS = {
         },
     },
 }
+# Celery
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

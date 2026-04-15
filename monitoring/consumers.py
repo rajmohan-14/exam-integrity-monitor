@@ -56,47 +56,62 @@ class ExamConsumer(AsyncWebsocketConsumer):
             'trust_score': trust_score
         }))
 
-    @database_sync_to_async
-    def save_event(self, event_type, metadata):
-        """Save suspicious event and recalculate trust score."""
-        try:
-            session = ExamSession.objects.get(id=self.session_id)
+@database_sync_to_async
+def save_event(self, event_type, metadata):
+    """Save suspicious event and recalculate trust score."""
+    from .tasks import send_flag_alert 
 
-            # Determine severity
-            weight = EVENT_WEIGHTS.get(event_type, 0.05)
-            if weight >= 0.12:
-                severity = 'high'
-            elif weight >= 0.08:
-                severity = 'med'
-            else:
-                severity = 'low'
+    try:
+        session = ExamSession.objects.select_related(
+            'exam', 'student'
+        ).get(id=self.session_id)
 
-            # Save the event
-            SuspiciousEvent.objects.create(
-                session=session,
-                event_type=event_type,
-                metadata=metadata,
-                severity=severity
-            )
+        was_flagged_before = session.status == 'flagged'
 
-            # Recalculate trust score
-            events = SuspiciousEvent.objects.filter(session=session)
-            penalty = sum(
-                EVENT_WEIGHTS.get(e.event_type, 0.05)
-                for e in events
-            )
-            new_score = round(max(0.0, 1.0 - penalty), 2)
-            session.trust_score = new_score
+        # Determine severity
+        weight = EVENT_WEIGHTS.get(event_type, 0.05)
+        if weight >= 0.12:
+            severity = 'high'
+        elif weight >= 0.08:
+            severity = 'med'
+        else:
+            severity = 'low'
 
-            # Auto-flag if below threshold
-            if new_score < session.exam.trust_threshold:
-                session.status = 'flagged'
+        # Save the event
+        SuspiciousEvent.objects.create(
+            session=session,
+            event_type=event_type,
+            metadata=metadata,
+            severity=severity
+        )
 
-            session.save()
-            return new_score
+        # Recalculate trust score
+        events = SuspiciousEvent.objects.filter(session=session)
+        penalty = sum(
+            EVENT_WEIGHTS.get(e.event_type, 0.05)
+            for e in events
+        )
+        new_score = round(max(0.0, 1.0 - penalty), 2)
+        session.trust_score = new_score
 
-        except ExamSession.DoesNotExist:
-            return 1.0
+       
+        if new_score < session.exam.trust_threshold:
+            session.status = 'flagged'
+
+          
+            if not was_flagged_before:
+                send_flag_alert.delay(
+                    session_id=str(session.id),
+                    student_username=session.student.username,
+                    exam_title=session.exam.title,
+                    trust_score=new_score
+                )
+
+        session.save()
+        return new_score
+
+    except ExamSession.DoesNotExist:
+        return 1.0
 
 
 class DashboardConsumer(AsyncWebsocketConsumer):
