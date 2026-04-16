@@ -34,6 +34,7 @@ pycparser==3.0
 pyOpenSSL==26.0.0
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
 redis==7.4.0
 service-identity==24.2.0
 six==1.17.0
