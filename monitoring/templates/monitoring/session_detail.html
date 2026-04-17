@@ -1,0 +1,114 @@
+{% extends "exams/base.html" %}
+{% block title %}Session — {{ session.student.username }}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+    <div>
+        <h2>{{ session.student.username }}</h2>
+        <p style="color:#666; font-size:14px; margin-top:4px">{{ session.exam.title }}</p>
+    </div>
+    <div style="display:flex; gap:8px">
+        <a href="{% url 'download-report' session_id=session.id %}"
+            class="btn">Download PDF Report</a>
+        <a href="{% url 'dashboard' %}"
+            style="padding:8px 16px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; text-decoration:none; color:#666">
+            ← Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Trust score overview -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:1.5rem">
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Trust Score</p>
+        <p style="font-size:24px; font-weight:500;
+            color:{% if session.trust_score > 0.7 %}#16a34a{% elif session.trust_score > 0.4 %}#d97706{% else %}#dc2626{% endif %}">
+            {{ session.trust_score|floatformat:2 }}
+        </p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Status</p>
+        <p style="font-size:16px; font-weight:500;
+            color:{% if session.status == 'flagged' %}#dc2626{% elif session.status == 'submitted' %}#16a34a{% else %}#2563eb{% endif %}">
+            {{ session.status|upper }}
+        </p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Suspicious Events</p>
+        <p style="font-size:24px; font-weight:500">{{ events.count }}</p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Answers Submitted</p>
+        <p style="font-size:24px; font-weight:500">{{ answers.count }}</p>
+    </div>
+</div>
+
+<!-- Trust score bar -->
+<div class="card" style="margin-bottom:1rem">
+    <p style="font-size:13px; color:#666; margin-bottom:8px">Trust score</p>
+    <div style="background:#f0f0f0; border-radius:6px; height:12px; margin-bottom:6px">
+        <div style="height:12px; border-radius:6px; width:{{ session.trust_score|floatformat:0 }}%;
+            background:{% if session.trust_score > 0.7 %}#22c55e{% elif session.trust_score > 0.4 %}#f59e0b{% else %}#ef4444{% endif %}">
+        </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:11px; color:#888">
+        <span>0.0 (fully suspicious)</span>
+        <span>1.0 (fully trusted)</span>
+    </div>
+</div>
+
+<!-- Suspicious events -->
+<div class="card" style="margin-bottom:1rem">
+    <h3 style="margin-bottom:1rem">Suspicious Events</h3>
+    {% if events %}
+    <table style="width:100%; border-collapse:collapse; font-size:13px">
+        <thead>
+            <tr style="border-bottom:2px solid #f0f0f0">
+                <th style="padding:8px; text-align:left; color:#888; font-weight:500">#</th>
+                <th style="padding:8px; text-align:left; color:#888; font-weight:500">Event</th>
+                <th style="padding:8px; text-align:left; color:#888; font-weight:500">Severity</th>
+                <th style="padding:8px; text-align:left; color:#888; font-weight:500">Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr style="border-bottom:1px solid #f5f5f5">
+                <td style="padding:8px; color:#888">{{ forloop.counter }}</td>
+                <td style="padding:8px; font-weight:500">{{ event.get_event_type_display }}</td>
+                <td style="padding:8px">
+                    <span style="font-size:11px; padding:2px 8px; border-radius:20px;
+                        {% if event.severity == 'high' %}background:#fee2e2; color:#991b1b;
+                        {% elif event.severity == 'med' %}background:#fef3c7; color:#92400e;
+                        {% else %}background:#f0f0f0; color:#666;{% endif %}">
+                        {{ event.severity|upper }}
+                    </span>
+                </td>
+                <td style="padding:8px; color:#666">{{ event.occurred_at|date:"h:i:s A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:#666; font-size:14px">No suspicious events recorded — student had a clean session.</p>
+    {% endif %}
+</div>
+
+<!-- Student answers -->
+<div class="card">
+    <h3 style="margin-bottom:1rem">Student Answers</h3>
+    {% if answers %}
+        {% for answer in answers %}
+        <div style="padding:1rem 0; border-bottom:1px solid #f5f5f5">
+            <p style="font-size:14px; font-weight:500; margin-bottom:6px">
+                Q{{ forloop.counter }}. {{ answer.question.body }}
+            </p>
+            <p style="font-size:13px; color:#444; background:#f9f9f9; padding:8px 12px; border-radius:6px; border-left:3px solid #e5e5e5">
+                {{ answer.response|default:"(no answer provided)" }}
+            </p>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#666; font-size:14px">No answers submitted yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
