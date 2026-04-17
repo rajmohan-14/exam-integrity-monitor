@@ -11,5 +11,5 @@ celery -A exammonitor worker --loglevel=info &
 echo "Starting Celery Beat..."
 celery -A exammonitor beat --loglevel=info &
 
-echo "All services running. Visit http://127.0.0.1:8000"
+echo "All services running. Visit http:/8000/127.0.0.1:"
 wait
