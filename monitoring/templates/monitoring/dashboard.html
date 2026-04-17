@@ -2,60 +2,145 @@
 {% block title %}Live Dashboard{% endblock %}
 
 {% block content %}
-<h2 style="margin-bottom:1.5rem">Live Exam Dashboard</h2>
-
-{% if sessions %}
-{% for session in sessions %}
-<div class="card" style="margin-bottom:1rem" id="session-{{ session.id }}">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
-        <div>
-            <p style="font-weight:500">{{ session.student.username }}</p>
-            <p style="font-size:13px; color:#666">{{ session.exam.title }}</p>
-        </div>
-        <span class="badge" style="background:{% if session.status == 'flagged' %}#fee2e2; color:#991b1b{% elif session.status == 'submitted' %}#dcfce7; color:#166534{% else %}#e0f2fe; color:#0c4a6e{% endif %}">
-            {{ session.status }}
-        </span>
-    </div>
-
-    <div style="display:flex; align-items:center; gap:1rem">
-        <span style="font-size:13px; color:#666; white-space:nowrap">Trust score:</span>
-        <div style="flex:1; background:#f0f0f0; border-radius:4px; height:8px">
-            <div id="bar-{{ session.id }}"
-                style="height:8px; border-radius:4px; background:#22c55e; width:{{ session.trust_score|floatformat:0 }}%; transition:width 0.5s">
-            </div>
-        </div>
-        <span id="score-{{ session.id }}" style="font-size:13px; font-weight:500; min-width:32px">
-            {{ session.trust_score }}
-        </span>
-    </div>
-
-    <p style="font-size:12px; color:#888; margin-top:0.5rem">
-        Events: {{ session.events.count }} suspicious &nbsp;|&nbsp;
-        Started: {{ session.started_at|date:"h:i A" }}
-    </p>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+    <h2>Live Dashboard</h2>
+    <span style="font-size:13px; color:#666">Auto-refreshes via WebSocket</span>
 </div>
 
-<script>
-(function() {
-    const sessionId = "{{ session.id }}";
-    const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard/${sessionId}/`);
+<!-- Summary stats -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:1.5rem">
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Total Sessions</p>
+        <p style="font-size:24px; font-weight:500">{{ total_sessions }}</p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Active</p>
+        <p style="font-size:24px; font-weight:500; color:#2563eb">{{ active_sessions }}</p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Flagged</p>
+        <p style="font-size:24px; font-weight:500; color:#dc2626">{{ flagged_sessions }}</p>
+    </div>
+    <div style="background:white; border:1px solid #e5e5e5; border-radius:8px; padding:1rem; text-align:center">
+        <p style="font-size:12px; color:#888; margin-bottom:4px">Submitted</p>
+        <p style="font-size:24px; font-weight:500; color:#16a34a">{{ submitted_sessions }}</p>
+    </div>
+</div>
 
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        const score = data.trust_score;
+<!-- Sessions table -->
+{% if sessions %}
+<div style="background:white; border:1px solid #e5e5e5; border-radius:8px; overflow:hidden">
+    <table style="width:100%; border-collapse:collapse">
+        <thead>
+            <tr style="background:#f9f9f9; border-bottom:1px solid #e5e5e5">
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Student</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Exam</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Trust Score</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Events</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Status</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Started</th>
+                <th style="padding:12px 16px; text-align:left; font-size:12px; color:#888; font-weight:500">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr style="border-bottom:1px solid #f0f0f0; {% if session.status == 'flagged' %}background:#fff5f5;{% endif %}"
+                id="row-{{ session.id }}">
+                <td style="padding:12px 16px; font-size:14px; font-weight:500">
+                    {{ session.student.username }}
+                </td>
+                <td style="padding:12px 16px; font-size:13px; color:#666">
+                    {{ session.exam.title }}
+                </td>
+                <td style="padding:12px 16px; min-width:160px">
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <div style="flex:1; background:#f0f0f0; border-radius:4px; height:6px">
+                            <div id="bar-{{ session.id }}"
+                                style="height:6px; border-radius:4px; transition:width 0.5s;
+                                width:{{ session.trust_score|floatformat:0 }}%;
+                                background:{% if session.trust_score > 0.7 %}#22c55e{% elif session.trust_score > 0.4 %}#f59e0b{% else %}#ef4444{% endif %}">
+                            </div>
+                        </div>
+                        <span id="score-{{ session.id }}"
+                            style="font-size:12px; font-weight:500; min-width:28px">
+                            {{ session.trust_score|floatformat:2 }}
+                        </span>
+                    </div>
+                </td>
+                <td style="padding:12px 16px; font-size:13px" id="events-{{ session.id }}">
+                    {{ session.events.count }}
+                </td>
+                <td style="padding:12px 16px">
+                    <span id="status-{{ session.id }}" style="font-size:11px; font-weight:500; padding:3px 10px; border-radius:20px;
+                        {% if session.status == 'flagged' %}background:#fee2e2; color:#991b1b;
+                        {% elif session.status == 'submitted' %}background:#dcfce7; color:#166534;
+                        {% else %}background:#dbeafe; color:#1e40af;{% endif %}">
+                        {{ session.status|upper }}
+                    </span>
+                </td>
+                <td style="padding:12px 16px; font-size:12px; color:#888">
+                    {{ session.started_at|date:"d M, h:i A" }}
+                </td>
+                <td style="padding:12px 16px">
+                    <div style="display:flex; gap:8px">
+                        <a href="{% url 'session-detail' session_id=session.id %}"
+                            style="font-size:12px; color:#2563eb; text-decoration:none">View</a>
+                        <a href="{% url 'download-report' session_id=session.id %}"
+                            style="font-size:12px; color:#666; text-decoration:none">PDF</a>
+                    </div>
+                </td>
+            </tr>
 
-        document.getElementById(`score-${sessionId}`).textContent = score.toFixed(2);
-        const bar = document.getElementById(`bar-${sessionId}`);
-        bar.style.width = (score * 100) + '%';
-        bar.style.background = score > 0.7 ? '#22c55e' : score > 0.4 ? '#f59e0b' : '#ef4444';
-    };
-})();
-</script>
-{% endfor %}
+            <!-- WebSocket listener per session -->
+            <script>
+            (function() {
+                const sessionId = "{{ session.id }}";
+                {% if session.status == 'active' %}
+                const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard/${sessionId}/`);
+                ws.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    const score = data.trust_score;
+
+                    // Update score
+                    const scoreEl = document.getElementById(`score-${sessionId}`);
+                    if (scoreEl) scoreEl.textContent = score.toFixed(2);
+
+                    // Update bar
+                    const bar = document.getElementById(`bar-${sessionId}`);
+                    if (bar) {
+                        bar.style.width = (score * 100) + '%';
+                        bar.style.background = score > 0.7 ? '#22c55e' : score > 0.4 ? '#f59e0b' : '#ef4444';
+                    }
+
+                    // Update events count
+                    const eventsEl = document.getElementById(`events-${sessionId}`);
+                    if (eventsEl) eventsEl.textContent = parseInt(eventsEl.textContent) + 1;
+
+                    // Highlight row if flagged
+                    if (score < {{ session.exam.trust_threshold }}) {
+                        const row = document.getElementById(`row-${sessionId}`);
+                        if (row) row.style.background = '#fff5f5';
+                        const statusEl = document.getElementById(`status-${sessionId}`);
+                        if (statusEl) {
+                            statusEl.textContent = 'FLAGGED';
+                            statusEl.style.background = '#fee2e2';
+                            statusEl.style.color = '#991b1b';
+                        }
+                    }
+                };
+                {% endif %}
+            })();
+            </script>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 {% else %}
 <div class="card">
-    <p style="color:#666">No exam sessions yet.</p>
+    <p style="color:#666; text-align:center; padding:2rem">
+        No exam sessions yet. Students will appear here once they start an exam.
+    </p>
 </div>
 {% endif %}
 {% endblock %}
