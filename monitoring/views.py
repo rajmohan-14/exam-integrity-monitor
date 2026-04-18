@@ -65,7 +65,7 @@ def take_exam(request, session_id):
         session.status = 'submitted'
         session.submitted_at = timezone.now()
         session.save()
-        return redirect('exam-submitted')
+    return redirect('exam-result', session_id=session.id) 
 
     return render(request, 'monitoring/take_exam.html', {
         'session': session,
@@ -293,3 +293,80 @@ def download_report(request, session_id):
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+@login_required(login_url='/users/login/')
+def exam_result(request, session_id):
+    session = get_object_or_404(
+        ExamSession,
+        id=session_id,
+        student=request.user,
+        status='submitted'
+    )
+    answers = session.answers.all().select_related('question')
+
+    # Calculate score
+    total_marks = 0
+    obtained_marks = 0
+    results = []
+
+    for answer in answers:
+        question = answer.question
+        total_marks += question.marks
+        is_correct = False
+
+        if question.question_type == 'mcq':
+            is_correct = answer.response.strip().lower() == question.correct_answer.strip().lower()
+            if is_correct:
+                obtained_marks += question.marks
+        else:
+            # For short/long answers mark as pending review
+            is_correct = None
+
+        results.append({
+            'question': question,
+            'response': answer.response,
+            'is_correct': is_correct,
+            'marks': question.marks,
+        })
+
+    percentage = round((obtained_marks / total_marks * 100), 1) if total_marks > 0 else 0
+
+    return render(request, 'monitoring/result.html', {
+        'session': session,
+        'results': results,
+        'total_marks': total_marks,
+        'obtained_marks': obtained_marks,
+        'percentage': percentage,
+    })
+@login_required(login_url='/users/login/')
+def leaderboard(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    sessions = ExamSession.objects.filter(
+        exam=exam,
+        status='submitted'
+    ).select_related('student', 'answers__question').order_by('-trust_score')
+
+    rankings = []
+    for session in sessions:
+        answers = session.answers.all().select_related('question')
+        obtained = sum(
+            a.question.marks for a in answers
+            if a.question.question_type == 'mcq'
+            and a.response.strip().lower() == a.question.correct_answer.strip().lower()
+        )
+        total = sum(a.question.marks for a in answers)
+        percentage = round((obtained / total * 100), 1) if total > 0 else 0
+        rankings.append({
+            'session': session,
+            'obtained': obtained,
+            'total': total,
+            'percentage': percentage,
+        })
+
+ 
+    rankings.sort(key=lambda x: x['percentage'], reverse=True)
+
+    return render(request, 'monitoring/leaderboard.html', {
+        'exam': exam,
+        'rankings': rankings,
+    })

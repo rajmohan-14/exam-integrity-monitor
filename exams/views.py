@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Exam, Question
 from .forms import ExamForm, QuestionForm
+from django.contrib import messages as django_messages
 
 
 def examiner_required(view_func):
@@ -77,3 +78,38 @@ def add_question(request, exam_id):
         'form': form,
         'exam': exam
     })
+@examiner_required
+def edit_exam(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+    if request.method == 'POST':
+        form = ExamForm(request.POST, instance=exam)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Exam updated successfully.')
+            return redirect('exam-detail', exam_id=exam.id)
+    else:
+        form = ExamForm(instance=exam)
+    return render(request, 'exams/create_exam.html', {
+        'form': form,
+        'exam': exam,
+        'editing': True
+    })
+
+
+@examiner_required
+def delete_exam(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+    if request.method == 'POST':
+        exam.delete()
+        messages.success(request, 'Exam deleted.')
+        return redirect('exam-list')
+    return render(request, 'exams/confirm_delete.html', {'exam': exam})
+
+
+@examiner_required
+def delete_question(request, question_id):
+    question = get_object_or_404(Question, id=question_id, exam__created_by=request.user)
+    exam_id = question.exam.id
+    question.delete()
+    messages.success(request, 'Question deleted.')
+    return redirect('exam-detail', exam_id=exam_id)

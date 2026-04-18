@@ -1,0 +1,66 @@
+{% extends "exams/base.html" %}
+{% block title %}Leaderboard — {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Leaderboard</h1>
+        <p class="page-subtitle">{{ exam.title }}</p>
+    </div>
+    <a href="/exams/" class="btn btn-secondary">← Back</a>
+</div>
+
+{% if rankings %}
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Student</th>
+                <th>Score</th>
+                <th>Percentage</th>
+                <th>Integrity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rankings %}
+            <tr style="{% if forloop.counter == 1 %}background:var(--warning-light){% endif %}">
+                <td>
+                    {% if forloop.counter == 1 %}🥇
+                    {% elif forloop.counter == 2 %}🥈
+                    {% elif forloop.counter == 3 %}🥉
+                    {% else %}#{{ forloop.counter }}{% endif %}
+                </td>
+                <td style="font-weight:500">{{ r.session.student.username }}</td>
+                <td>{{ r.obtained }} / {{ r.total }}</td>
+                <td>
+                    <div class="trust-bar-wrap">
+                        <div class="trust-bar-bg">
+                            <div class="trust-bar-fill"
+                                style="width:{{ r.percentage }}%;
+                                background:{% if r.percentage >= 70 %}var(--success){% elif r.percentage >= 40 %}var(--warning){% else %}var(--danger){% endif %}">
+                            </div>
+                        </div>
+                        <span style="font-size:13px; font-weight:500; min-width:40px">{{ r.percentage }}%</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge
+                        {% if r.session.trust_score > 0.7 %}badge-success
+                        {% elif r.session.trust_score > 0.4 %}badge-warning
+                        {% else %}badge-danger{% endif %}">
+                        {{ r.session.trust_score|floatformat:2 }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card empty">
+    <div class="empty-icon">📊</div>
+    <p>No submissions yet. Leaderboard will appear once students submit.</p>
+</div>
+{% endif %}
+{% endblock %}

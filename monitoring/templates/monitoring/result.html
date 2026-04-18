@@ -1,0 +1,97 @@
+{% extends "exams/base.html" %}
+{% block title %}Your Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Exam Results</h1>
+        <p class="page-subtitle">{{ session.exam.title }}</p>
+    </div>
+    <a href="/exams/" class="btn btn-secondary">← Back to Exams</a>
+</div>
+
+<!-- Score card -->
+<div class="card" style="text-align:center; padding:2.5rem; margin-bottom:1.5rem">
+    <div style="font-size:64px; font-weight:700; color:
+        {% if percentage >= 70 %}var(--success)
+        {% elif percentage >= 40 %}var(--warning)
+        {% else %}var(--danger){% endif %}">
+        {{ percentage }}%
+    </div>
+    <p style="font-size:18px; color:var(--text-secondary); margin:8px 0">
+        {{ obtained_marks }} / {{ total_marks }} marks
+    </p>
+    <div style="margin-top:1rem">
+        <span class="badge {% if percentage >= 70 %}badge-success{% elif percentage >= 40 %}badge-warning{% else %}badge-danger{% endif %}"
+            style="font-size:14px; padding:6px 20px">
+            {% if percentage >= 70 %}Passed{% elif percentage >= 40 %}Needs Improvement{% else %}Failed{% endif %}
+        </span>
+    </div>
+
+    <!-- Score bar -->
+    <div style="max-width:400px; margin:1.5rem auto 0">
+        <div style="background:var(--border); border-radius:8px; height:12px; overflow:hidden">
+            <div style="height:12px; border-radius:8px; width:{{ percentage }}%;
+                background:{% if percentage >= 70 %}var(--success){% elif percentage >= 40 %}var(--warning){% else %}var(--danger){% endif %};
+                transition:width 1s ease">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trust score info -->
+<div class="card card-sm" style="display:flex; align-items:center; gap:16px; margin-bottom:1.5rem">
+    <div>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:2px">Integrity Score</p>
+        <p style="font-size:20px; font-weight:600; color:
+            {% if session.trust_score > 0.7 %}var(--success)
+            {% elif session.trust_score > 0.4 %}var(--warning)
+            {% else %}var(--danger){% endif %}">
+            {{ session.trust_score|floatformat:2 }}
+        </p>
+    </div>
+    <div class="trust-bar-bg" style="flex:1; height:8px">
+        <div class="trust-bar-fill" style="width:{% widthratio session.trust_score 1 100 %}%;
+            background:{% if session.trust_score > 0.7 %}var(--success){% elif session.trust_score > 0.4 %}var(--warning){% else %}var(--danger){% endif %}">
+        </div>
+    </div>
+    <span class="badge {% if session.status == 'flagged' %}badge-danger{% else %}badge-success{% endif %}">
+        {{ session.status|upper }}
+    </span>
+</div>
+
+<!-- Question breakdown -->
+<h3 style="font-size:16px; font-weight:600; margin-bottom:1rem">Question Breakdown</h3>
+{% for result in results %}
+<div class="card card-sm" style="margin-bottom:0.75rem;
+    border-left:3px solid
+    {% if result.is_correct == True %}var(--success)
+    {% elif result.is_correct == False %}var(--danger)
+    {% else %}var(--warning){% endif %}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem">
+        <div style="flex:1">
+            <p style="font-size:14px; font-weight:500; margin-bottom:6px">
+                Q{{ forloop.counter }}. {{ result.question.body }}
+            </p>
+            <p style="font-size:13px; color:var(--text-secondary)">
+                Your answer: <strong style="color:var(--text-primary)">{{ result.response|default:"(no answer)" }}</strong>
+            </p>
+            {% if result.question.question_type == 'mcq' and result.is_correct == False %}
+            <p style="font-size:13px; color:var(--success); margin-top:4px">
+                Correct: {{ result.question.correct_answer }}
+            </p>
+            {% endif %}
+        </div>
+        <div style="text-align:right; flex-shrink:0">
+            {% if result.is_correct == True %}
+                <span class="badge badge-success">+{{ result.marks }} mark</span>
+            {% elif result.is_correct == False %}
+                <span class="badge badge-danger">0 / {{ result.marks }}</span>
+            {% else %}
+                <span class="badge badge-warning">Pending review</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,56 +1,324 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Exam Monitor{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --border: #e9ecef;
+            --text-primary: #1a1a2e;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-light: #eef2ff;
+            --success: #16a34a;
+            --success-light: #dcfce7;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --danger: #dc2626;
+            --danger-light: #fee2e2;
+            --info: #2563eb;
+            --info-light: #dbeafe;
+            --nav-bg: #1a1a2e;
+            --radius: 10px;
+            --radius-sm: 6px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        [data-theme="dark"] {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --border: #2d2d44;
+            --text-primary: #e8e8f0;
+            --text-secondary: #9999bb;
+            --text-muted: #666688;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-light: #1e1b4b;
+            --success-light: #14532d;
+            --warning-light: #451a03;
+            --danger-light: #450a0a;
+            --info-light: #1e3a5f;
+            --nav-bg: #0f0f1a;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
-        nav { background: #1a1a1a; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        nav a { color: white; text-decoration: none; font-weight: 500; }
-        nav a:hover { opacity: 0.8; }
-        .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #e5e5e5; }
-        .btn { display: inline-block; padding: 8px 16px; background: #1a1a1a; color: white; border-radius: 6px; text-decoration: none; font-size: 14px; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; background: #e5e5e5; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 15px;
+            line-height: 1.6;
+            transition: background 0.2s, color 0.2s;
+        }
+        /* Nav */
+        nav {
+            background: var(--nav-bg);
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .nav-brand {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-brand span {
+            width: 28px; height: 28px;
+            background: var(--accent);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            transition: all 0.15s;
+        }
+        .nav-link:hover { color: white; background: rgba(255,255,255,0.08); }
+        .nav-link.primary {
+            background: var(--accent);
+            color: white;
+            font-weight: 500;
+        }
+        .nav-link.primary:hover { background: var(--accent-hover); }
+        .nav-user {
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+        /* Dark mode toggle */
+        .theme-btn {
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: rgba(255,255,255,0.7);
+            width: 34px; height: 34px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .theme-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+        /* Layout */
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+        }
+        .card-sm { padding: 1rem; }
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--bg); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-full { width: 100%; justify-content: center; padding: 10px; }
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-danger  { background: var(--danger-light);  color: var(--danger); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); }
+        .badge-info    { background: var(--info-light);    color: var(--info); }
+        .badge-neutral { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+        /* Forms */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 9px 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: border-color 0.15s;
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow);
+        }
+        .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-value { font-size: 26px; font-weight: 600; }
+        /* Table */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            padding: 11px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--bg); }
+        /* Trust bar */
+        .trust-bar-wrap {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .trust-bar-bg {
+            flex: 1; background: var(--border);
+            border-radius: 4px; height: 6px; overflow: hidden;
+        }
+        .trust-bar-fill { height: 6px; border-radius: 4px; transition: width 0.5s; }
+        /* Messages */
         .messages { list-style: none; margin-bottom: 1rem; }
-        .messages li { padding: 10px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 6px; }
-        .messages .error { background: #fee2e2; color: #991b1b; }
-        .messages .success { background: #dcfce7; color: #166534; }
+        .messages li {
+            padding: 10px 16px; border-radius: var(--radius-sm);
+            font-size: 14px; margin-bottom: 6px;
+        }
+        .messages .error { background: var(--danger-light); color: var(--danger); }
+        .messages .success { background: var(--success-light); color: var(--success); }
+        /* Page header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .page-title { font-size: 22px; font-weight: 600; }
+        .page-subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+        /* Empty state */
+        .empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+        .empty-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.4; }
     </style>
 </head>
 <body>
-    <nav>
-        <a href="/exams/">Exam Monitor</a>
-        <div style="display:flex; gap:1.25rem; align-items:center">
-            {% if request.user.is_authenticated %}
-                {% if request.user.is_examiner %}
-                    <a href="/monitor/dashboard/" style="font-size:14px">Dashboard</a>
-                    <a href="/exams/create/" style="font-size:14px">+ Create Exam</a>
-                {% endif %}
-                <span style="font-size:14px; opacity:0.7">
-                    {{ request.user.username }} · {{ request.user.role }}
-                </span>
-                <a href="/users/logout/" style="font-size:14px">Logout</a>
-            {% else %}
-                <a href="/users/login/" style="font-size:14px">Login</a>
-                <a href="/users/signup/" style="font-size:14px">Sign up</a>
+<nav>
+    <a href="/exams/" class="nav-brand">
+        <span>E</span> ExamMonitor
+    </a>
+    <div class="nav-links">
+        {% if request.user.is_authenticated %}
+            {% if request.user.is_examiner %}
+                <a href="/monitor/dashboard/" class="nav-link">Dashboard</a>
+                <a href="/exams/create/" class="nav-link primary">+ Create Exam</a>
             {% endif %}
-        </div>
-    </nav>
-
-    <div class="container">
-        {% if messages %}
-        <ul class="messages">
-            {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-            {% endfor %}
-        </ul>
+            <span class="nav-user">{{ request.user.username }} · {{ request.user.role }}</span>
+            <a href="/users/logout/" class="nav-link">Logout</a>
+        {% else %}
+            <a href="/users/login/" class="nav-link">Login</a>
+            <a href="/users/signup/" class="nav-link primary">Sign up</a>
         {% endif %}
-
-        {% block content %}
-        {% endblock %}
+        <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle dark mode">🌙</button>
     </div>
+</nav>
+
+<div class="container">
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+</div>
+
+<script>
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+// Load saved theme
+const saved = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-theme', saved);
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('theme-btn').textContent = saved === 'dark' ? '☀️' : '🌙';
+});
+</script>
 </body>
 </html>
