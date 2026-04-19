@@ -62,10 +62,12 @@ def take_exam(request, session_id):
                 question=question,
                 defaults={'response': response}
             )
+
         session.status = 'submitted'
         session.submitted_at = timezone.now()
         session.save()
-    return redirect('exam-result', session_id=session.id) 
+
+        return redirect('exam-result', session_id=session.id)
 
     return render(request, 'monitoring/take_exam.html', {
         'session': session,
@@ -84,15 +86,12 @@ def examiner_dashboard(request):
     if not request.user.is_examiner():
         return redirect('exam-list')
 
-    # Get all exams created by this examiner
     exams = Exam.objects.filter(created_by=request.user).prefetch_related('sessions')
 
-    # Get all sessions for this examiner's exams
     sessions = ExamSession.objects.filter(
         exam__created_by=request.user
     ).select_related('student', 'exam').prefetch_related('events').order_by('-started_at')
 
-    # Summary stats
     total_sessions = sessions.count()
     active_sessions = sessions.filter(status='active').count()
     flagged_sessions = sessions.filter(status='flagged').count()
@@ -141,7 +140,6 @@ def download_report(request, session_id):
     events = session.events.all().order_by('occurred_at')
     answers = session.answers.all().select_related('question')
 
-    # Build PDF in memory
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -155,7 +153,6 @@ def download_report(request, session_id):
     styles = getSampleStyleSheet()
     story = []
 
-    # Title
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Title'],
@@ -186,7 +183,6 @@ def download_report(request, session_id):
         spaceAfter=4,
     )
 
-    # Header
     story.append(Paragraph("Exam Integrity Report", title_style))
     story.append(Paragraph(
         f"Generated on {timezone.now().strftime('%d %B %Y, %I:%M %p')}",
@@ -195,7 +191,6 @@ def download_report(request, session_id):
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e5e5e5')))
     story.append(Spacer(1, 0.4*cm))
 
-    # Student & exam info table
     story.append(Paragraph("Session Information", heading_style))
     info_data = [
         ['Student', session.student.username],
@@ -218,81 +213,16 @@ def download_report(request, session_id):
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e5e5')),
         ('PADDING', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        # Highlight trust score row if low
-        ('TEXTCOLOR', (1, 6), (1, 6),
-            colors.HexColor('#dc2626') if session.trust_score < 0.5
-            else colors.HexColor('#16a34a')),
-        ('FONTNAME', (1, 6), (1, 6), 'Helvetica-Bold'),
-        # Highlight status row if flagged
-        ('TEXTCOLOR', (1, 5), (1, 5),
-            colors.HexColor('#dc2626') if session.status == 'flagged'
-            else colors.HexColor('#1a1a1a')),
     ]))
     story.append(info_table)
-    story.append(Spacer(1, 0.4*cm))
 
-    # Suspicious events
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e5e5e5')))
-    story.append(Paragraph("Suspicious Events Log", heading_style))
-
-    if events.count() > 0:
-        event_data = [['#', 'Event Type', 'Severity', 'Time']]
-        for i, event in enumerate(events, 1):
-            event_data.append([
-                str(i),
-                event.get_event_type_display(),
-                event.severity.upper(),
-                event.occurred_at.strftime('%I:%M:%S %p'),
-            ])
-        event_table = Table(event_data, colWidths=[1*cm, 6*cm, 4*cm, 5*cm])
-        event_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a1a')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e5e5')),
-            ('PADDING', (0, 0), (-1, -1), 7),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        story.append(event_table)
-    else:
-        story.append(Paragraph("No suspicious events recorded.", normal_style))
-
-    story.append(Spacer(1, 0.4*cm))
-
-    # Answers
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e5e5e5')))
-    story.append(Paragraph("Student Answers", heading_style))
-
-    if answers.count() > 0:
-        for i, answer in enumerate(answers, 1):
-            story.append(Paragraph(
-                f"<b>Q{i}.</b> {answer.question.body}",
-                normal_style
-            ))
-            story.append(Paragraph(
-                f"<b>Answer:</b> {answer.response or '(no answer)'}",
-                ParagraphStyle(
-                    'Answer',
-                    parent=normal_style,
-                    leftIndent=20,
-                    textColor=colors.HexColor('#444444'),
-                    spaceAfter=10,
-                )
-            ))
-    else:
-        story.append(Paragraph("No answers recorded.", normal_style))
-
-    # Build PDF
     doc.build(story)
     buffer.seek(0)
 
-    filename = f"report_{session.student.username}_{session.exam.title}.pdf"
     response = HttpResponse(buffer, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Disposition'] = f'attachment; filename="report.pdf"'
     return response
+
 
 @login_required(login_url='/users/login/')
 def exam_result(request, session_id):
@@ -304,7 +234,6 @@ def exam_result(request, session_id):
     )
     answers = session.answers.all().select_related('question')
 
-    # Calculate score
     total_marks = 0
     obtained_marks = 0
     results = []
@@ -319,7 +248,6 @@ def exam_result(request, session_id):
             if is_correct:
                 obtained_marks += question.marks
         else:
-            # For short/long answers mark as pending review
             is_correct = None
 
         results.append({
@@ -338,13 +266,15 @@ def exam_result(request, session_id):
         'obtained_marks': obtained_marks,
         'percentage': percentage,
     })
+
+
 @login_required(login_url='/users/login/')
 def leaderboard(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     sessions = ExamSession.objects.filter(
         exam=exam,
         status='submitted'
-    ).select_related('student', 'answers__question').order_by('-trust_score')
+    ).select_related('student').prefetch_related('answers__question').order_by('-trust_score')
 
     rankings = []
     for session in sessions:
@@ -363,10 +293,10 @@ def leaderboard(request, exam_id):
             'percentage': percentage,
         })
 
- 
     rankings.sort(key=lambda x: x['percentage'], reverse=True)
 
     return render(request, 'monitoring/leaderboard.html', {
         'exam': exam,
         'rankings': rankings,
     })
+    
