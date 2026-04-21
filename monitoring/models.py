@@ -76,3 +76,15 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"{self.session.student.username} — Q{self.question.id}"
+class ExamSnapshot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session = models.ForeignKey(
+        ExamSession,
+        on_delete=models.CASCADE,
+        related_name='snapshots'
+    )
+    image = models.TextField()  # base64 encoded image
+    taken_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Snapshot — {self.session.student.username} at {self.taken_at}"
