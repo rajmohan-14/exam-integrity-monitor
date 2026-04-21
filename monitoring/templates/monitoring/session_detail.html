@@ -111,4 +111,33 @@
         <p style="color:#666; font-size:14px">No answers submitted yet.</p>
     {% endif %}
 </div>
+<!-- Webcam snapshots -->
+<div class="card" style="margin-top:1rem">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+        <h3 style="font-size:16px; font-weight:600">Webcam Snapshots</h3>
+        <span class="badge badge-neutral">{{ session.snapshots.count }} captured</span>
+    </div>
+
+    {% if session.snapshots.all %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px">
+        {% for snapshot in session.snapshots.all %}
+        <div style="border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden">
+            <img src="data:image/jpeg;base64,{{ snapshot.image }}"
+                style="width:100%; display:block"
+                alt="Snapshot {{ forloop.counter }}"
+                loading="lazy">
+            <div style="padding:6px 8px; background:var(--bg)">
+                <p style="font-size:11px; color:var(--text-muted)">
+                    {{ snapshot.taken_at|date:"h:i:s A" }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-secondary); font-size:14px">
+        No snapshots captured yet — student may have denied camera access.
+    </p>
+    {% endif %}
+</div>
 {% endblock %}

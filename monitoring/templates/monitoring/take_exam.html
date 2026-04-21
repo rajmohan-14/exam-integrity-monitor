@@ -3,62 +3,127 @@
 
 {% block content %}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-    <h2>{{ exam.title }}</h2>
-    <div style="font-size:24px; font-weight:500; color:#1a1a1a" id="timer">--:--</div>
-</div>
-
-<div class="card" style="margin-bottom:1rem; padding:0.75rem 1rem;">
-    <div style="display:flex; align-items:center; gap:1rem">
-        <span style="font-size:13px; color:#666">Trust score:</span>
-        <div style="flex:1; background:#f0f0f0; border-radius:4px; height:8px">
-            <div id="trust-bar" style="height:8px; border-radius:4px; background:#22c55e; width:100%; transition:width 0.5s"></div>
+    <div>
+        <h1 class="page-title">{{ exam.title }}</h1>
+        <p class="page-subtitle">Answer all questions before the timer runs out</p>
+    </div>
+    <div style="text-align:right">
+        <div id="timer" style="font-size:32px; font-weight:700; color:var(--text-primary); font-variant-numeric:tabular-nums">
+            --:--
         </div>
-        <span id="trust-value" style="font-size:13px; font-weight:500">1.0</span>
+        <p style="font-size:11px; color:var(--text-muted); margin-top:2px">Time remaining</p>
     </div>
 </div>
 
-<div id="warning-box" style="display:none; background:#fff3cd; border:1px solid #ffc107; padding:0.75rem 1rem; border-radius:6px; margin-bottom:1rem; font-size:13px; color:#856404">
+<!-- Trust score bar -->
+<div class="card card-sm" style="margin-bottom:1rem">
+    <div style="display:flex; align-items:center; gap:12px">
+        <span style="font-size:12px; color:var(--text-muted); white-space:nowrap">Integrity score</span>
+        <div class="trust-bar-bg">
+            <div id="trust-bar" class="trust-bar-fill" style="width:100%; background:var(--success)"></div>
+        </div>
+        <span id="trust-value" style="font-size:13px; font-weight:600; min-width:32px">1.00</span>
+    </div>
+</div>
+
+<!-- Warning box -->
+<div id="warning-box" style="display:none; background:var(--danger-light); border:1px solid var(--danger); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:13px; color:var(--danger)">
     Suspicious activity detected. Your examiner has been notified.
 </div>
 
-<form method="post" id="exam-form">
-    {% csrf_token %}
-    {% for question in questions %}
-    <div class="card" style="margin-bottom:1rem">
-        <p style="font-weight:500; margin-bottom:1rem">
-            Q{{ forloop.counter }}. {{ question.body }}
-            <span style="float:right; font-size:12px; color:#888">[{{ question.marks }} mark]</span>
-        </p>
+<!-- Webcam permission denied warning -->
+<div id="cam-denied" style="display:none; background:var(--warning-light); border:1px solid var(--warning); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:13px; color:var(--warning)">
+    Camera access denied. This exam requires webcam monitoring. Please enable camera and refresh.
+</div>
 
-        {% if question.question_type == 'mcq' and question.options %}
-            {% for key, value in question.options.items %}
-            <label style="display:block; padding:8px 12px; margin-bottom:6px; border:1px solid #e5e5e5; border-radius:6px; cursor:pointer; font-size:14px">
-                <input type="radio" name="question_{{ question.id }}" value="{{ key }}" style="margin-right:8px">
-                {{ key }}. {{ value }}
-            </label>
+<div style="display:grid; grid-template-columns:1fr 200px; gap:1rem; align-items:start">
+
+    <!-- Questions -->
+    <div>
+        <form method="post" id="exam-form">
+            {% csrf_token %}
+            {% for question in questions %}
+            <div class="card" style="margin-bottom:1rem">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem">
+                    <p style="font-size:15px; font-weight:500; flex:1">
+                        Q{{ forloop.counter }}. {{ question.body }}
+                    </p>
+                    <span class="badge badge-neutral" style="flex-shrink:0; margin-left:1rem">
+                        {{ question.marks }} mark
+                    </span>
+                </div>
+
+                {% if question.question_type == 'mcq' and question.options %}
+                    {% for key, value in question.options.items %}
+                    <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:6px; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:14px; transition:background 0.15s"
+                        onmouseover="this.style.background='var(--bg)'"
+                        onmouseout="this.style.background='transparent'">
+                        <input type="radio" name="question_{{ question.id }}" value="{{ key }}">
+                        <span><strong>{{ key }}.</strong> {{ value }}</span>
+                    </label>
+                    {% endfor %}
+                {% else %}
+                    <textarea
+                        name="question_{{ question.id }}"
+                        rows="4"
+                        placeholder="Write your answer here..."
+                        style="resize:vertical"></textarea>
+                {% endif %}
+            </div>
             {% endfor %}
-        {% else %}
-            <textarea name="question_{{ question.id }}" rows="3"
-                style="width:100%; padding:8px 12px; border:1px solid #e5e5e5; border-radius:6px; font-size:14px; resize:vertical"
-                placeholder="Write your answer here..."></textarea>
-        {% endif %}
-    </div>
-    {% endfor %}
 
-    <button type="submit"
-        style="width:100%; padding:12px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer; margin-bottom:2rem">
-        Submit Exam
-    </button>
-</form>
+            <button type="submit" class="btn btn-primary btn-full" style="margin-bottom:2rem">
+                Submit Exam →
+            </button>
+        </form>
+    </div>
+
+    <!-- Webcam panel -->
+    <div style="position:sticky; top:80px">
+        <div class="card card-sm" style="padding:0.75rem">
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-align:center">
+                Webcam monitoring active
+            </p>
+            <div style="position:relative; background:#000; border-radius:var(--radius-sm); overflow:hidden; aspect-ratio:4/3">
+                <video id="webcam" autoplay muted playsinline
+                    style="width:100%; height:100%; object-fit:cover; display:block">
+                </video>
+                <div id="cam-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#111; color:#666; font-size:12px">
+                    Starting camera...
+                </div>
+                <!-- Recording indicator -->
+                <div style="position:absolute; top:8px; right:8px; display:flex; align-items:center; gap:4px">
+                    <div id="rec-dot" style="width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse 1.5s infinite"></div>
+                    <span style="font-size:10px; color:white; font-weight:500">REC</span>
+                </div>
+            </div>
+            <!-- Hidden canvas for snapshots -->
+            <canvas id="snapshot-canvas" style="display:none"></canvas>
+            <p id="snapshot-status" style="font-size:11px; color:var(--text-muted); margin-top:8px; text-align:center">
+                Next snapshot in <span id="snap-countdown">30</span>s
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+</style>
 
 <script>
 const SESSION_ID = "{{ session.id }}";
 const DURATION_MINS = {{ exam.duration_mins }};
+const CSRF_TOKEN = "{{ csrf_token }}";
 const WS_URL = `ws://${window.location.host}/ws/exam/${SESSION_ID}/`;
+const SNAPSHOT_URL = `/monitor/session/${SESSION_ID}/snapshot/`;
+const SNAPSHOT_INTERVAL = 30; // seconds
 
-// --- WebSocket setup ---
+// --- WebSocket ---
 let socket = new WebSocket(WS_URL);
-
 socket.onopen = () => console.log('Monitoring connected');
 socket.onmessage = (e) => {
     const data = JSON.parse(e.data);
@@ -77,16 +142,16 @@ function updateTrustUI(score) {
     const val = document.getElementById('trust-value');
     const warn = document.getElementById('warning-box');
 
-    val.textContent = score.toFixed(2);
+    val.textContent = parseFloat(score).toFixed(2);
     bar.style.width = (score * 100) + '%';
 
     if (score > 0.7) {
-        bar.style.background = '#22c55e';
+        bar.style.background = 'var(--success)';
     } else if (score > 0.4) {
-        bar.style.background = '#f59e0b';
+        bar.style.background = 'var(--warning)';
         warn.style.display = 'block';
     } else {
-        bar.style.background = '#ef4444';
+        bar.style.background = 'var(--danger)';
         warn.style.display = 'block';
     }
 }
@@ -95,16 +160,81 @@ function updateTrustUI(score) {
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) sendEvent('tab_switch');
 });
-
 window.addEventListener('blur', () => sendEvent('focus_loss'));
-
 document.addEventListener('copy', () => sendEvent('copy'));
 document.addEventListener('paste', () => sendEvent('paste'));
-
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     sendEvent('right_click');
 });
+
+// --- Webcam ---
+let stream = null;
+
+async function startWebcam() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 320, height: 240, facingMode: 'user' },
+            audio: false
+        });
+        const video = document.getElementById('webcam');
+        video.srcObject = stream;
+        document.getElementById('cam-loading').style.display = 'none';
+        startSnapshotTimer();
+    } catch (err) {
+        document.getElementById('cam-loading').style.display = 'none';
+        document.getElementById('cam-denied').style.display = 'block';
+        console.error('Webcam error:', err);
+        // Still send a suspicious event
+        sendEvent('focus_loss', { reason: 'camera_denied' });
+    }
+}
+
+// --- Snapshot capture ---
+let snapCountdown = SNAPSHOT_INTERVAL;
+
+function startSnapshotTimer() {
+    const countdownEl = document.getElementById('snap-countdown');
+    setInterval(() => {
+        snapCountdown--;
+        if (countdownEl) countdownEl.textContent = snapCountdown;
+        if (snapCountdown <= 0) {
+            takeSnapshot();
+            snapCountdown = SNAPSHOT_INTERVAL;
+        }
+    }, 1000);
+}
+
+function takeSnapshot() {
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('snapshot-canvas');
+    if (!video || !canvas || !stream) return;
+
+    canvas.width = 320;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, 320, 240);
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.6);
+
+    fetch(SNAPSHOT_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN,
+        },
+        body: JSON.stringify({ image: imageData })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const status = document.getElementById('snapshot-status');
+        if (status) status.style.color = 'var(--success)';
+        setTimeout(() => {
+            if (status) status.style.color = 'var(--text-muted)';
+        }, 1000);
+    })
+    .catch(err => console.error('Snapshot error:', err));
+}
 
 // --- Countdown timer ---
 const endTime = Date.now() + (DURATION_MINS * 60 * 1000);
@@ -113,8 +243,14 @@ function updateTimer() {
     const remaining = Math.max(0, endTime - Date.now());
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
-    document.getElementById('timer').textContent =
-        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    const timerEl = document.getElementById('timer');
+
+    timerEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+    
+    if (remaining < 300000) {
+        timerEl.style.color = 'var(--danger)';
+    }
 
     if (remaining === 0) {
         document.getElementById('exam-form').submit();
@@ -123,5 +259,8 @@ function updateTimer() {
 
 setInterval(updateTimer, 1000);
 updateTimer();
+
+
+startWebcam();
 </script>
 {% endblock %}
