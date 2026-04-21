@@ -10,7 +10,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.units import cm
 import io
-
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+import json
+from django.http import HttpResponse, JsonResponse
+from .models import ExamSession, SuspiciousEvent, Answer, ExamSnapshot
 
 @login_required(login_url='/users/login/')
 def start_exam(request, exam_id):
@@ -299,4 +303,30 @@ def leaderboard(request, exam_id):
         'exam': exam,
         'rankings': rankings,
     })
-    
+@login_required(login_url='/users/login/')
+@require_POST
+def save_snapshot(request, session_id):
+    session = get_object_or_404(
+        ExamSession,
+        id=session_id,
+        student=request.user,
+        status='active'
+    )
+    try:
+        data = json.loads(request.body)
+        image_data = data.get('image', '')
+
+        if image_data:
+            # Strip the data URL prefix if present
+            if ',' in image_data:
+                image_data = image_data.split(',')[1]
+
+            ExamSnapshot.objects.create(
+                session=session,
+                image=image_data
+            )
+            return JsonResponse({'status': 'saved'})
+        return JsonResponse({'status': 'no image'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)    
