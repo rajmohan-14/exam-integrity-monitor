@@ -28,10 +28,10 @@
 
 <!-- Warning box -->
 <div id="warning-box" style="display:none; background:var(--danger-light); border:1px solid var(--danger); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:13px; color:var(--danger)">
-    Suspicious activity detected. Your examiner has been notified.
+    ⚠️ Suspicious activity detected. Your examiner has been notified.
 </div>
 
-<!-- Webcam permission denied warning -->
+<!-- Webcam denied warning -->
 <div id="cam-denied" style="display:none; background:var(--warning-light); border:1px solid var(--warning); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:1rem; font-size:13px; color:var(--warning)">
     Camera access denied. This exam requires webcam monitoring. Please enable camera and refresh.
 </div>
@@ -40,6 +40,13 @@
 
     <!-- Questions -->
     <div>
+        {% if exam.instructions %}
+        <div class="card card-sm" style="margin-bottom:1rem; border-left:3px solid var(--accent)">
+            <p style="font-size:13px; font-weight:500; color:var(--accent); margin-bottom:4px">Instructions</p>
+            <p style="font-size:13px; color:var(--text-secondary)">{{ exam.instructions }}</p>
+        </div>
+        {% endif %}
+
         <form method="post" id="exam-form">
             {% csrf_token %}
             {% for question in questions %}
@@ -91,17 +98,24 @@
                 <div id="cam-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#111; color:#666; font-size:12px">
                     Starting camera...
                 </div>
-                <!-- Recording indicator -->
                 <div style="position:absolute; top:8px; right:8px; display:flex; align-items:center; gap:4px">
-                    <div id="rec-dot" style="width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse 1.5s infinite"></div>
+                    <div style="width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse 1.5s infinite"></div>
                     <span style="font-size:10px; color:white; font-weight:500">REC</span>
                 </div>
             </div>
-            <!-- Hidden canvas for snapshots -->
             <canvas id="snapshot-canvas" style="display:none"></canvas>
-            <p id="snapshot-status" style="font-size:11px; color:var(--text-muted); margin-top:8px; text-align:center">
-                Next snapshot in <span id="snap-countdown">30</span>s
+            <!-- No countdown shown to student -->
+            <p style="font-size:11px; color:var(--text-muted); margin-top:8px; text-align:center">
+                Monitoring active
             </p>
+        </div>
+
+        <!-- Live event log for student -->
+        <div class="card card-sm" style="margin-top:0.75rem; padding:0.75rem">
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:6px">Activity log</p>
+            <div id="event-log" style="font-size:11px; color:var(--text-secondary); max-height:120px; overflow-y:auto">
+                <p style="color:var(--success)">● Session started</p>
+            </div>
         </div>
     </div>
 
@@ -118,22 +132,70 @@
 const SESSION_ID = "{{ session.id }}";
 const DURATION_MINS = {{ exam.duration_mins }};
 const CSRF_TOKEN = "{{ csrf_token }}";
-const WS_URL = `ws://${window.location.host}/ws/exam/${SESSION_ID}/`;
 const SNAPSHOT_URL = `/monitor/session/${SESSION_ID}/snapshot/`;
-const SNAPSHOT_INTERVAL = 30; // seconds
+const SNAPSHOT_INTERVAL = 30;
 
-// --- WebSocket ---
-let socket = new WebSocket(WS_URL);
-socket.onopen = () => console.log('Monitoring connected');
-socket.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    updateTrustUI(data.trust_score);
-};
+let socket;
+let snapCountdown = SNAPSHOT_INTERVAL;
+let stream = null;
+let reconnectAttempts = 0;
 
+// --- WebSocket with auto-reconnect ---
+function connectWebSocket() {
+    const WS_URL = `ws://${window.location.host}/ws/exam/${SESSION_ID}/`;
+    socket = new WebSocket(WS_URL);
+
+    socket.onopen = () => {
+        console.log('Monitoring connected');
+        reconnectAttempts = 0;
+        logEvent('● Connected to monitoring server', 'var(--success)');
+    };
+
+    socket.onclose = () => {
+        console.log('WS closed — reconnecting...');
+        reconnectAttempts++;
+        const delay = Math.min(1000 * reconnectAttempts, 5000);
+        setTimeout(connectWebSocket, delay);
+    };
+
+    socket.onerror = (err) => {
+        console.error('WS error:', err);
+    };
+
+    socket.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.trust_score !== undefined) {
+            updateTrustUI(data.trust_score);
+        }
+    };
+}
+
+// --- Send event with retry ---
 function sendEvent(type, metadata = {}) {
-    if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type, metadata }));
+    const payload = JSON.stringify({ type, metadata });
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(payload);
+        console.log('Event sent:', type);
+    } else {
+        console.warn('WS not open, retrying for:', type);
+        setTimeout(() => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(payload);
+            }
+        }, 1500);
     }
+}
+
+// --- Activity log (visible to student) ---
+function logEvent(message, color = 'var(--danger)') {
+    const log = document.getElementById('event-log');
+    const p = document.createElement('p');
+    p.style.color = color;
+    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    p.textContent = `${time} ${message}`;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
 }
 
 // --- Trust score UI ---
@@ -157,20 +219,82 @@ function updateTrustUI(score) {
 }
 
 // --- Surveillance events ---
+
+// Tab switch
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) sendEvent('tab_switch');
+    if (document.hidden) {
+        sendEvent('tab_switch', { timestamp: Date.now() });
+        logEvent('⚠ Tab switch detected');
+    }
 });
-window.addEventListener('blur', () => sendEvent('focus_loss'));
-document.addEventListener('copy', () => sendEvent('copy'));
-document.addEventListener('paste', () => sendEvent('paste'));
+
+// Window blur (alt+tab, clicking outside browser)
+window.addEventListener('blur', () => {
+    sendEvent('focus_loss', { timestamp: Date.now() });
+    logEvent('⚠ Window focus lost');
+});
+
+// Copy via mouse
+document.addEventListener('copy', () => {
+    const selected = window.getSelection()?.toString() || '';
+    sendEvent('copy', { text_length: selected.length });
+    logEvent('⚠ Copy detected');
+});
+
+// Paste via mouse
+document.addEventListener('paste', () => {
+    sendEvent('paste', { timestamp: Date.now() });
+    logEvent('⚠ Paste detected');
+});
+
+// Right click
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    sendEvent('right_click');
+    sendEvent('right_click', { timestamp: Date.now() });
+    logEvent('⚠ Right-click blocked');
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key.toLowerCase()) {
+            case 'c':
+                sendEvent('copy', { method: 'keyboard' });
+                logEvent('⚠ Copy shortcut detected');
+                break;
+            case 'v':
+                sendEvent('paste', { method: 'keyboard' });
+                logEvent('⚠ Paste shortcut detected');
+                break;
+            case 'x':
+                sendEvent('copy', { method: 'cut' });
+                logEvent('⚠ Cut shortcut detected');
+                break;
+            case 'a':
+                e.preventDefault();
+                break;
+            case 'u':
+                e.preventDefault(); // block view source
+                break;
+            case 's':
+                e.preventDefault(); // block save
+                break;
+        }
+    }
+    // Block F12 devtools
+    if (e.key === 'F12') {
+        e.preventDefault();
+        sendEvent('focus_loss', { method: 'devtools_attempt' });
+        logEvent('⚠ DevTools blocked');
+    }
+    // PrintScreen
+    if (e.key === 'PrintScreen') {
+        sendEvent('focus_loss', { method: 'screenshot' });
+        logEvent('⚠ Screenshot attempt detected');
+    }
 });
 
 // --- Webcam ---
-let stream = null;
-
 async function startWebcam() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -180,24 +304,20 @@ async function startWebcam() {
         const video = document.getElementById('webcam');
         video.srcObject = stream;
         document.getElementById('cam-loading').style.display = 'none';
+        logEvent('● Camera started', 'var(--success)');
         startSnapshotTimer();
     } catch (err) {
         document.getElementById('cam-loading').style.display = 'none';
         document.getElementById('cam-denied').style.display = 'block';
-        console.error('Webcam error:', err);
-        // Still send a suspicious event
         sendEvent('focus_loss', { reason: 'camera_denied' });
+        logEvent('⚠ Camera access denied');
     }
 }
 
-// --- Snapshot capture ---
-let snapCountdown = SNAPSHOT_INTERVAL;
-
+// --- Snapshot (silent) ---
 function startSnapshotTimer() {
-    const countdownEl = document.getElementById('snap-countdown');
     setInterval(() => {
         snapCountdown--;
-        if (countdownEl) countdownEl.textContent = snapCountdown;
         if (snapCountdown <= 0) {
             takeSnapshot();
             snapCountdown = SNAPSHOT_INTERVAL;
@@ -215,25 +335,14 @@ function takeSnapshot() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, 320, 240);
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.6);
-
     fetch(SNAPSHOT_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': CSRF_TOKEN,
         },
-        body: JSON.stringify({ image: imageData })
-    })
-    .then(r => r.json())
-    .then(data => {
-        const status = document.getElementById('snapshot-status');
-        if (status) status.style.color = 'var(--success)';
-        setTimeout(() => {
-            if (status) status.style.color = 'var(--text-muted)';
-        }, 1000);
-    })
-    .catch(err => console.error('Snapshot error:', err));
+        body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.6) })
+    }).catch(err => console.error('Snapshot error:', err));
 }
 
 // --- Countdown timer ---
@@ -244,23 +353,14 @@ function updateTimer() {
     const mins = Math.floor(remaining / 60000);
     const secs = Math.floor((remaining % 60000) / 1000);
     const timerEl = document.getElementById('timer');
-
     timerEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-
-    
-    if (remaining < 300000) {
-        timerEl.style.color = 'var(--danger)';
-    }
-
-    if (remaining === 0) {
-        document.getElementById('exam-form').submit();
-    }
+    if (remaining < 300000) timerEl.style.color = 'var(--danger)';
+    if (remaining === 0) document.getElementById('exam-form').submit();
 }
 
 setInterval(updateTimer, 1000);
 updateTimer();
-
-
+connectWebSocket();
 startWebcam();
 </script>
 {% endblock %}
