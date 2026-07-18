@@ -36,95 +36,139 @@
     Camera access denied. This exam requires webcam monitoring. Please enable camera and refresh.
 </div>
 
-<div style="display:grid; grid-template-columns:1fr 200px; gap:1rem; align-items:start">
+<div style="display:grid; grid-template-columns:1fr 220px; gap:1rem; align-items:start">
 
     <!-- Questions -->
     <div>
         {% if exam.instructions %}
         <div class="card card-sm" style="margin-bottom:1rem; border-left:3px solid var(--accent)">
-            <p style="font-size:13px; font-weight:500; color:var(--accent); margin-bottom:4px">Instructions</p>
-            <p style="font-size:13px; color:var(--text-secondary)">{{ exam.instructions }}</p>
+            <p style="font-size:13px; font-weight:500; color:var(--accent); margin-bottom:4px">📋 Instructions</p>
+            <p style="font-size:13px; color:var(--text-secondary); line-height:1.6">{{ exam.instructions }}</p>
         </div>
         {% endif %}
 
         <form method="post" id="exam-form">
             {% csrf_token %}
+
             {% for question in questions %}
             <div class="card" style="margin-bottom:1rem">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem">
-                    <p style="font-size:15px; font-weight:500; flex:1">
-                        Q{{ forloop.counter }}. {{ question.body }}
-                    </p>
-                    <span class="badge badge-neutral" style="flex-shrink:0; margin-left:1rem">
-                        {{ question.marks }} mark
+
+                <!-- Question header -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem">
+                    <div style="display:flex; gap:12px; align-items:flex-start; flex:1">
+                        <span style="width:30px; height:30px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; flex-shrink:0; margin-top:1px">
+                            {{ forloop.counter }}
+                        </span>
+                        <p style="font-size:15px; font-weight:500; line-height:1.6; padding-top:3px">
+                            {{ question.body }}
+                        </p>
+                    </div>
+                    <span class="badge badge-neutral" style="flex-shrink:0; margin-left:1rem; margin-top:4px">
+                        {{ question.marks }} mark{% if question.marks > 1 %}s{% endif %}
                     </span>
                 </div>
 
+                <!-- MCQ options -->
                 {% if question.question_type == 'mcq' and question.options %}
+                <div style="display:flex; flex-direction:column; gap:8px; padding-left:42px">
                     {% for key, value in question.options.items %}
-                    <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:6px; border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:14px; transition:background 0.15s"
-                        onmouseover="this.style.background='var(--bg)'"
-                        onmouseout="this.style.background='transparent'">
-                        <input type="radio" name="question_{{ question.id }}" value="{{ key }}">
-                        <span><strong>{{ key }}.</strong> {{ value }}</span>
+                    <label class="mcq-option" style="display:flex; align-items:center; gap:12px; padding:11px 16px; border:1.5px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; font-size:14px; transition:all 0.15s; user-select:none; background:var(--surface)">
+                        <input type="radio"
+                            name="question_{{ question.id }}"
+                            value="{{ key }}"
+                            style="display:none"
+                            onchange="selectOption(this)">
+                        <span class="option-bubble" style="width:28px; height:28px; border-radius:50%; background:var(--bg); border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; transition:all 0.15s; color:var(--text-secondary)">
+                            {{ key|upper }}
+                        </span>
+                        <span style="line-height:1.5">{{ value }}</span>
                     </label>
                     {% endfor %}
+                </div>
+
+                <!-- Short / Long answer -->
                 {% else %}
+                <div style="padding-left:42px">
                     <textarea
                         name="question_{{ question.id }}"
                         rows="4"
                         placeholder="Write your answer here..."
-                        style="resize:vertical"></textarea>
+                        style="resize:vertical; font-size:14px; line-height:1.6">
+                    </textarea>
+                </div>
                 {% endif %}
+
             </div>
             {% endfor %}
 
-            <button type="submit" class="btn btn-primary btn-full" style="margin-bottom:2rem">
+            <button type="submit" class="btn btn-primary btn-full" style="margin-bottom:2rem; padding:14px; font-size:15px">
                 Submit Exam →
             </button>
         </form>
     </div>
 
-    <!-- Webcam panel -->
-    <div style="position:sticky; top:80px">
+    <!-- Right panel -->
+    <div style="position:sticky; top:80px; display:flex; flex-direction:column; gap:0.75rem">
+
+        <!-- Webcam -->
         <div class="card card-sm" style="padding:0.75rem">
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-align:center">
-                Webcam monitoring active
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px; text-align:center; font-weight:500">
+                WEBCAM MONITORING
             </p>
             <div style="position:relative; background:#000; border-radius:var(--radius-sm); overflow:hidden; aspect-ratio:4/3">
                 <video id="webcam" autoplay muted playsinline
                     style="width:100%; height:100%; object-fit:cover; display:block">
                 </video>
-                <div id="cam-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#111; color:#666; font-size:12px">
+                <div id="cam-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#111; color:#555; font-size:11px; flex-direction:column; gap:6px">
+                    <div style="width:20px; height:20px; border:2px solid #333; border-top-color:#666; border-radius:50%; animation:spin 1s linear infinite"></div>
                     Starting camera...
                 </div>
-                <div style="position:absolute; top:8px; right:8px; display:flex; align-items:center; gap:4px">
-                    <div style="width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse 1.5s infinite"></div>
-                    <span style="font-size:10px; color:white; font-weight:500">REC</span>
+                <div style="position:absolute; top:8px; left:8px; display:flex; align-items:center; gap:4px; background:rgba(0,0,0,0.6); padding:3px 8px; border-radius:20px">
+                    <div style="width:7px; height:7px; border-radius:50%; background:#ef4444; animation:pulse 1.5s infinite"></div>
+                    <span style="font-size:10px; color:white; font-weight:600">LIVE</span>
                 </div>
             </div>
             <canvas id="snapshot-canvas" style="display:none"></canvas>
-            <!-- No countdown shown to student -->
             <p style="font-size:11px; color:var(--text-muted); margin-top:8px; text-align:center">
                 Monitoring active
             </p>
         </div>
 
-        <!-- Live event log for student -->
-        <div class="card card-sm" style="margin-top:0.75rem; padding:0.75rem">
-            <p style="font-size:11px; color:var(--text-muted); margin-bottom:6px">Activity log</p>
-            <div id="event-log" style="font-size:11px; color:var(--text-secondary); max-height:120px; overflow-y:auto">
+        <!-- Activity log -->
+        <div class="card card-sm" style="padding:0.75rem">
+            <p style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em">
+                Activity Log
+            </p>
+            <div id="event-log" style="font-size:11px; color:var(--text-secondary); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:3px">
                 <p style="color:var(--success)">● Session started</p>
             </div>
         </div>
-    </div>
 
+        <!-- Question progress -->
+        <div class="card card-sm" style="padding:0.75rem">
+            <p style="font-size:11px; font-weight:500; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em">
+                Progress
+            </p>
+            <div id="progress-dots" style="display:flex; flex-wrap:wrap; gap:6px">
+                {% for question in questions %}
+                <div class="progress-dot" data-q="{{ forloop.counter }}"
+                    style="width:28px; height:28px; border-radius:50%; background:var(--bg); border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:500; color:var(--text-muted); cursor:default; transition:all 0.2s">
+                    {{ forloop.counter }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
 </div>
 
 <style>
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 </style>
 
@@ -140,6 +184,74 @@ let snapCountdown = SNAPSHOT_INTERVAL;
 let stream = null;
 let reconnectAttempts = 0;
 
+// --- MCQ selection ---
+function selectOption(radio) {
+    const name = radio.name;
+    // Reset all options in this group
+    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+        const label = r.closest('label');
+        const bubble = label.querySelector('.option-bubble');
+        label.style.borderColor = 'var(--border)';
+        label.style.background = 'var(--surface)';
+        bubble.style.background = 'var(--bg)';
+        bubble.style.borderColor = 'var(--border)';
+        bubble.style.color = 'var(--text-secondary)';
+    });
+    // Highlight selected
+    const label = radio.closest('label');
+    const bubble = label.querySelector('.option-bubble');
+    label.style.borderColor = 'var(--accent)';
+    label.style.background = 'var(--accent-light)';
+    bubble.style.background = 'var(--accent)';
+    bubble.style.borderColor = 'var(--accent)';
+    bubble.style.color = 'white';
+
+    // Update progress dot
+    updateProgressDot(name);
+}
+
+// --- Progress tracker ---
+function updateProgressDot(inputName) {
+    // Extract question number from form — find which question this belongs to
+    const allRadios = document.querySelectorAll(`input[name="${inputName}"]`);
+    if (allRadios.length === 0) return;
+
+    // Find the question index by traversing DOM
+    const form = document.getElementById('exam-form');
+    const cards = form.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        const radio = card.querySelector(`input[name="${inputName}"]`);
+        if (radio) {
+            const dot = document.querySelector(`.progress-dot[data-q="${index + 1}"]`);
+            if (dot) {
+                dot.style.background = 'var(--accent)';
+                dot.style.borderColor = 'var(--accent)';
+                dot.style.color = 'white';
+            }
+        }
+    });
+}
+
+// Track textarea answers for progress
+document.querySelectorAll('textarea').forEach((textarea, index) => {
+    textarea.addEventListener('input', () => {
+        const cards = document.querySelectorAll('#exam-form .card');
+        cards.forEach((card, i) => {
+            if (card.contains(textarea)) {
+                const dot = document.querySelector(`.progress-dot[data-q="${i + 1}"]`);
+                if (dot) {
+                    dot.style.background = textarea.value.trim()
+                        ? 'var(--accent)' : 'var(--bg)';
+                    dot.style.borderColor = textarea.value.trim()
+                        ? 'var(--accent)' : 'var(--border)';
+                    dot.style.color = textarea.value.trim()
+                        ? 'white' : 'var(--text-muted)';
+                }
+            }
+        });
+    });
+});
+
 // --- WebSocket with auto-reconnect ---
 function connectWebSocket() {
     const WS_URL = `ws://${window.location.host}/ws/exam/${SESSION_ID}/`;
@@ -152,61 +264,49 @@ function connectWebSocket() {
     };
 
     socket.onclose = () => {
-        console.log('WS closed — reconnecting...');
         reconnectAttempts++;
         const delay = Math.min(1000 * reconnectAttempts, 5000);
         setTimeout(connectWebSocket, delay);
     };
 
-    socket.onerror = (err) => {
-        console.error('WS error:', err);
-    };
+    socket.onerror = (err) => console.error('WS error:', err);
 
     socket.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.trust_score !== undefined) {
-            updateTrustUI(data.trust_score);
-        }
+        if (data.trust_score !== undefined) updateTrustUI(data.trust_score);
     };
 }
 
-// --- Send event with retry ---
 function sendEvent(type, metadata = {}) {
     const payload = JSON.stringify({ type, metadata });
-
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(payload);
         console.log('Event sent:', type);
     } else {
-        console.warn('WS not open, retrying for:', type);
         setTimeout(() => {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(payload);
-            }
+            if (socket && socket.readyState === WebSocket.OPEN) socket.send(payload);
         }, 1500);
     }
 }
 
-// --- Activity log (visible to student) ---
 function logEvent(message, color = 'var(--danger)') {
     const log = document.getElementById('event-log');
     const p = document.createElement('p');
     p.style.color = color;
-    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
     p.textContent = `${time} ${message}`;
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
 }
 
-// --- Trust score UI ---
 function updateTrustUI(score) {
     const bar = document.getElementById('trust-bar');
     const val = document.getElementById('trust-value');
     const warn = document.getElementById('warning-box');
-
     val.textContent = parseFloat(score).toFixed(2);
     bar.style.width = (score * 100) + '%';
-
     if (score > 0.7) {
         bar.style.background = 'var(--success)';
     } else if (score > 0.4) {
@@ -218,91 +318,52 @@ function updateTrustUI(score) {
     }
 }
 
-// --- Surveillance events ---
-
-// Tab switch
+// --- Surveillance ---
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         sendEvent('tab_switch', { timestamp: Date.now() });
         logEvent('⚠ Tab switch detected');
     }
 });
-
-// Window blur (alt+tab, clicking outside browser)
 window.addEventListener('blur', () => {
     sendEvent('focus_loss', { timestamp: Date.now() });
     logEvent('⚠ Window focus lost');
 });
-
-// Copy via mouse
 document.addEventListener('copy', () => {
-    const selected = window.getSelection()?.toString() || '';
-    sendEvent('copy', { text_length: selected.length });
+    sendEvent('copy', { text_length: window.getSelection()?.toString().length || 0 });
     logEvent('⚠ Copy detected');
 });
-
-// Paste via mouse
 document.addEventListener('paste', () => {
     sendEvent('paste', { timestamp: Date.now() });
     logEvent('⚠ Paste detected');
 });
-
-// Right click
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     sendEvent('right_click', { timestamp: Date.now() });
     logEvent('⚠ Right-click blocked');
 });
-
-// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey) {
         switch(e.key.toLowerCase()) {
-            case 'c':
-                sendEvent('copy', { method: 'keyboard' });
-                logEvent('⚠ Copy shortcut detected');
-                break;
-            case 'v':
-                sendEvent('paste', { method: 'keyboard' });
-                logEvent('⚠ Paste shortcut detected');
-                break;
-            case 'x':
-                sendEvent('copy', { method: 'cut' });
-                logEvent('⚠ Cut shortcut detected');
-                break;
-            case 'a':
-                e.preventDefault();
-                break;
-            case 'u':
-                e.preventDefault(); // block view source
-                break;
-            case 's':
-                e.preventDefault(); // block save
-                break;
+            case 'c': sendEvent('copy', { method: 'keyboard' }); logEvent('⚠ Copy shortcut'); break;
+            case 'v': sendEvent('paste', { method: 'keyboard' }); logEvent('⚠ Paste shortcut'); break;
+            case 'x': sendEvent('copy', { method: 'cut' }); logEvent('⚠ Cut detected'); break;
+            case 'a': e.preventDefault(); break;
+            case 'u': e.preventDefault(); break;
+            case 's': e.preventDefault(); break;
         }
     }
-    // Block F12 devtools
-    if (e.key === 'F12') {
-        e.preventDefault();
-        sendEvent('focus_loss', { method: 'devtools_attempt' });
-        logEvent('⚠ DevTools blocked');
-    }
-    // PrintScreen
-    if (e.key === 'PrintScreen') {
-        sendEvent('focus_loss', { method: 'screenshot' });
-        logEvent('⚠ Screenshot attempt detected');
-    }
+    if (e.key === 'F12') { e.preventDefault(); sendEvent('focus_loss', { method: 'devtools' }); logEvent('⚠ DevTools blocked'); }
+    if (e.key === 'PrintScreen') { sendEvent('focus_loss', { method: 'screenshot' }); logEvent('⚠ Screenshot attempt'); }
 });
 
 // --- Webcam ---
 async function startWebcam() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 320, height: 240, facingMode: 'user' },
-            audio: false
+            video: { width: 320, height: 240, facingMode: 'user' }, audio: false
         });
-        const video = document.getElementById('webcam');
-        video.srcObject = stream;
+        document.getElementById('webcam').srcObject = stream;
         document.getElementById('cam-loading').style.display = 'none';
         logEvent('● Camera started', 'var(--success)');
         startSnapshotTimer();
@@ -314,14 +375,10 @@ async function startWebcam() {
     }
 }
 
-// --- Snapshot (silent) ---
 function startSnapshotTimer() {
     setInterval(() => {
         snapCountdown--;
-        if (snapCountdown <= 0) {
-            takeSnapshot();
-            snapCountdown = SNAPSHOT_INTERVAL;
-        }
+        if (snapCountdown <= 0) { takeSnapshot(); snapCountdown = SNAPSHOT_INTERVAL; }
     }, 1000);
 }
 
@@ -329,25 +386,17 @@ function takeSnapshot() {
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('snapshot-canvas');
     if (!video || !canvas || !stream) return;
-
-    canvas.width = 320;
-    canvas.height = 240;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, 320, 240);
-
+    canvas.width = 320; canvas.height = 240;
+    canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
     fetch(SNAPSHOT_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': CSRF_TOKEN,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
         body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.6) })
     }).catch(err => console.error('Snapshot error:', err));
 }
 
-// --- Countdown timer ---
+// --- Timer ---
 const endTime = Date.now() + (DURATION_MINS * 60 * 1000);
-
 function updateTimer() {
     const remaining = Math.max(0, endTime - Date.now());
     const mins = Math.floor(remaining / 60000);

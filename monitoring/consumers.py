@@ -27,7 +27,7 @@ class ExamConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         event_type = data.get('type')
         metadata = data.get('metadata', {})
-        print(f"EVENT RECEIVED: {event_type} for session {self.session_id}")
+      
         trust_score = await self.save_event(event_type, metadata)
 
         await self.channel_layer.group_send(
